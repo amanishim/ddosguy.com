@@ -1,5 +1,5 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -37,6 +37,7 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --font-kalam: "Kalam", cursive;
 }
 
 .dark {
@@ -116,8 +117,296 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    padding: 0;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   body {
     @apply bg-background text-foreground;
+    color: #333;
+    background: #fefcf3;
+    line-height: 1.6;
+  }
+}
+
+/* Global font override - ensure everything uses Kalam */
+*,
+*::before,
+*::after {
+  font-family: var(--font-kalam), cursive !important;
+}
+
+html,
+body {
+  font-family: var(--font-kalam), cursive !important;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Doodle-style components */
+.doodle-border {
+  border: 3px solid var(--ink);
+  border-radius: 15px;
+  position: relative;
+  background: white;
+  box-shadow: 4px 4px 0px var(--ink);
+}
+
+.doodle-border:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px var(--ink);
+  transition: all 0.2s ease;
+}
+
+.doodle-btn {
+  font-family: var(--font-kalam), cursive !important;
+  font-weight: 700;
+  padding: 12px 24px;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  background: white;
+  color: var(--ink);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 3px 3px 0px var(--ink);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.doodle-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0px var(--ink);
+}
+
+.doodle-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 3px 3px 0px var(--ink);
+}
+
+.doodle-btn--accent {
+  background: var(--accent);
+  color: var(--ink);
+}
+
+.doodle-input {
+  font-family: var(--font-kalam), cursive !important;
+  padding: 12px 16px;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  background: white;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.doodle-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent);
+  transform: translate(-1px, -1px);
+}
+
+.doodle-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.doodle-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.doodle-underline::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: -5px;
+  right: -5px;
+  height: 15px;
+  background: var(--accent);
+  border-radius: 8px;
+  z-index: -1;
+  transform: rotate(-1deg);
+}
+
+/* Navigation styles */
+.nav-link {
+  font-family: var(--font-kalam), cursive !important;
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+  background: var(--accent);
+  transform: rotate(-1deg);
+}
+
+.mobile-menu-btn {
+  font-family: var(--font-kalam), cursive !important;
+  padding: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+}
+
+.mobile-link {
+  font-family: var(--font-kalam), cursive !important;
+  display: block;
+  padding: 12px 16px;
+  color: var(--ink);
+  text-decoration: none;
+  border-radius: 8px;
+  margin: 4px 0;
+  transition: all 0.2s ease;
+}
+
+.mobile-link:hover {
+  background: var(--accent);
+  transform: rotate(-0.5deg);
+}
+
+.footer-link {
+  font-family: var(--font-kalam), cursive !important;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.footer-link:hover {
+  border-bottom-color: var(--accent);
+  color: var(--ink);
+}
+
+/* Chart and data display styles */
+.recharts-text,
+.recharts-label,
+.recharts-cartesian-axis-tick-value {
+  font-family: var(--font-kalam), cursive !important;
+}
+
+/* Ensure consistent font rendering */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Focus styles for accessibility */
+button:focus,
+input:focus,
+a:focus,
+textarea:focus {
+  outline: 4px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Animation for loading states */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Doodle-style animations */
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(-1deg);
+  }
+  50% {
+    transform: rotate(1deg);
+  }
+}
+
+.wiggle {
+  animation: wiggle 2s ease-in-out infinite;
+}
+
+/* Responsive text sizing */
+@media (max-width: 640px) {
+  .text-5xl {
+    font-size: 2.5rem;
+  }
+
+  .text-4xl {
+    font-size: 2rem;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #fef7ed;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #000;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #333;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: light;
+  }
+}
+
+/* Ensure all text uses Kalam */
+.font-heading {
+  font-family: var(--font-kalam), cursive !important;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+span,
+div,
+a,
+button,
+input,
+textarea,
+select,
+label,
+li,
+td,
+th {
+  font-family: var(--font-kalam), cursive !important;
+}
+
+/* Doodle theme styles are injected by the DoodleTheme component */
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
   }
 }

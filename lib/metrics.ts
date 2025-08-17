@@ -1,91 +1,84 @@
-let kvInstance: any | null = null
-let kvReady = false
-
-async function getKV() {
-  if (kvReady) return kvInstance
-  kvReady = true
-  try {
-    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-      const { Redis } = await import("@upstash/redis")
-      kvInstance = new (Redis as any)({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN })
-    } else {
-      kvInstance = undefined
-    }
-  } catch {
-    kvInstance = undefined
+export interface SecurityMetrics {
+  totalScans: number
+  averageScore: number
+  commonVulnerabilities: Array<{
+    name: string
+    count: number
+    percentage: number
+  }>
+  protectionLevels: {
+    high: number
+    medium: number
+    low: number
   }
-  return kvInstance
 }
 
-const memCounts = new Map<string, number>() // YYYY-MM-DD -> count
-let memTotal = 0
-
-function dayKey(date = new Date()): string {
-  const d = new Date(date)
-  const y = d.getUTCFullYear()
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0")
-  const dd = String(d.getUTCDate()).padStart(2, "0")
-  return `${y}-${m}-${dd}`
+export interface WeeklyBreakdown {
+  day: string
+  scans: number
 }
 
-function lastNDays(n: number): string[] {
-  const keys: string[] = []
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date()
-    d.setUTCDate(d.getUTCDate() - i)
-    keys.push(dayKey(d))
+// Simple in-memory storage (in production, use a database)
+let scanCount = 0
+
+export async function getSecurityMetrics(): Promise<SecurityMetrics> {
+  // In a real app, this would fetch from a database
+  // For now, return realistic mock data
+  return {
+    totalScans: scanCount,
+    averageScore: 78,
+    commonVulnerabilities: [
+      { name: "Missing HTTPS", count: 23, percentage: 49 },
+      { name: "No CDN Protection", count: 18, percentage: 38 },
+      { name: "Weak Security Headers", count: 15, percentage: 32 },
+      { name: "DNS Vulnerabilities", count: 12, percentage: 26 },
+    ],
+    protectionLevels: {
+      high: 15,
+      medium: 20,
+      low: 12,
+    },
   }
-  return keys
 }
 
-export async function incrementScanCount() {
-  const key = `scan_count:${dayKey()}`
-  const kv = await getKV()
-  if (kv) {
-    try {
-      await kv.incr(key)
-      await kv.expire(key, 8 * 24 * 60 * 60) // keep a rolling week
-      await kv.incr("scan_total")
-      return
-    } catch {
-      // fall back to memory
-    }
-  }
-  memCounts.set(dayKey(), (memCounts.get(dayKey()) || 0) + 1)
-  memTotal += 1
+export function incrementScanCount(): void {
+  scanCount++
 }
 
-export async function getWeeklyBreakdown() {
-  const kv = await getKV()
-  const days = lastNDays(7)
-  const byDay = []
-  for (const d of days) {
-    let count = 0
-    if (kv) {
-      try {
-        const v = await kv.get<number>(`scan_count:${d}`)
-        count = typeof v === "number" ? v : 0
-      } catch {
-        count = 0
-      }
-    } else {
-      count = memCounts.get(d) || 0
-    }
-    byDay.push({ date: d, count })
-  }
-  const total = byDay.reduce((s, x) => s + x.count, 0)
-  return { total, byDay }
+export async function getWeeklyBreakdown(): Promise<WeeklyBreakdown[]> {
+  // Mock weekly data - in production, this would come from a database
+  return [
+    { day: "Mon", scans: 12 },
+    { day: "Tue", scans: 19 },
+    { day: "Wed", scans: 8 },
+    { day: "Thu", scans: 15 },
+    { day: "Fri", scans: 22 },
+    { day: "Sat", scans: 6 },
+    { day: "Sun", scans: 9 },
+  ]
 }
 
-export async function getTotalCount() {
-  const kv = await getKV()
-  if (kv) {
-    try {
-      const v = await kv.get<number>("scan_total")
-      return typeof v === "number" ? v : 0
-    } catch {
-      // ignore
-    }
+export function calculateRiskLevel(score: number, criticalIssues: number): "LOW" | "MEDIUM" | "HIGH" {
+  if (criticalIssues > 2) return "HIGH"
+  if (criticalIssues > 0 || score < 60) return "MEDIUM"
+  return "LOW"
+}
+
+export function getScoreColor(score: number): string {
+  if (score >= 80) return "text-green-600"
+  if (score >= 60) return "text-yellow-600"
+  return "text-red-600"
+}
+
+export function getRiskColor(risk: string): string {
+  switch (risk) {
+    case "LOW":
+      return "text-green-600"
+    case "MEDIUM":
+      return "text-yellow-600"
+    case "HIGH":
+      return "text-red-600"
+    default:
+      return "text-gray-600"
   }
-  return memTotal
 }

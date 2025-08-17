@@ -1,120 +1,97 @@
-import { insertScan } from "./db"
-// Optional Upstash KV for cache; falls back to in-memory
-let kv: any = null
-async function getKV() {
-  if (kv !== null) return kv
-  try {
-    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-      const { Redis } = await import("@upstash/redis")
-      kv = new (Redis as any)({
-        url: process.env.KV_REST_API_URL,
-        token: process.env.KV_REST_API_TOKEN,
-      })
-    } else {
-      kv = undefined
-    }
-  } catch {
-    kv = undefined
+export interface ScanResult {
+  waf: {
+    vulnerable: boolean
+    details: string
   }
-  return kv
-}
-
-type CheckResult = { vulnerable: boolean; details: string }
-export type ScanResult = {
-  waf: CheckResult
-  ip_exposed: CheckResult
-  server_header: CheckResult
-  meta?: {
+  ip_exposed: {
+    vulnerable: boolean
+    details: string
+  }
+  server_header: {
+    vulnerable: boolean
+    details: string
+  }
+  meta: {
     host: string
-    ipv6?: boolean
-    edgeProviders?: string[]
-    dnssecValidated?: boolean
-    headers?: Record<string, string>
-    subdomains?: string[]
-    asnHints?: string[]
-    httpsRedirect?: boolean
-    hsts?: string
+    ipv6: boolean
+    edgeProviders: string[]
+    dnssecValidated: boolean
+    headers: Record<string, string>
+    subdomains: string[]
+    asnHints: string[]
+    httpsRedirect: boolean
+    hsts: string
   }
 }
 
-type Entry = { id: string; host: string; result: ScanResult; createdAt: number; ttlMs: number }
-
-const memByHost = new Map<string, Entry>()
-const memById = new Map<string, Entry>()
-const RATE = new Map<string, { tokens: number; resetAt: number }>() // in-memory fallback
-
-const now = () => Date.now()
-const TTL_MS = 5 * 60 * 1000
-
-export async function saveResult(host: string, result: ScanResult, id?: string, ttlMs = TTL_MS) {
-  const uid = id || crypto.randomUUID()
-  const entry: Entry = { id: uid, host, result, createdAt: now(), ttlMs }
-  memByHost.set(host, entry)
-  memById.set(uid, entry)
-
-  // Persist (best-effort)
-  insertScan(uid, host, result).catch(() => {})
-  const k = await getKV()
-  if (k) {
-    try {
-      await k.set(`scanid:${uid}`, entry, { ex: Math.ceil(ttlMs / 1000) })
-      await k.set(`scanhost:${host}`, entry, { ex: Math.ceil(ttlMs / 1000) })
-    } catch {}
-  }
-  return entry
+export interface CachedScan {
+  id: string
+  host: string
+  result: ScanResult
+  timestamp: number
 }
 
-export async function getByHost(host: string): Promise<Entry | null> {
-  const k = await getKV()
-  if (k) {
-    try {
-      const e = (await k.get(`scanhost:${host}`)) as Entry | null
-      if (e) return e
-    } catch {}
+// Simple in-memory cache (in production, use a database)
+const scanCache = new Map<string, CachedScan>()
+const scanById = new Map<string, CachedScan>()
+const rateLimitCache = new Map<string, { count: number; resetTime: number }>()
+
+export async function getByHost(host: string): Promise<CachedScan | null> {
+  const cached = scanCache.get(host)
+  if (!cached) return null
+
+  // Cache for 1 hour
+  if (Date.now() - cached.timestamp > 3600000) {
+    scanCache.delete(host)
+    scanById.delete(cached.id)
+    return null
   }
-  const e = memByHost.get(host)
-  if (!e) return null
-  if (now() - e.createdAt > e.ttlMs) {
-    memByHost.delete(host); memById.delete(e.id); return null
-  }
-  return e
+
+  return cached
 }
 
-export async function getById(id: string): Promise<Entry | null> {
-  const k = await getKV()
-  if (k) {
-    try {
-      const e = (await k.get(`scanid:${id}`)) as Entry | null
-      if (e) return e
-    } catch {}
+export async function getById(id: string): Promise<CachedScan | null> {
+  const cached = scanById.get(id)
+  if (!cached) return null
+
+  // Cache for 1 hour
+  if (Date.now() - cached.timestamp > 3600000) {
+    scanCache.delete(cached.host)
+    scanById.delete(id)
+    return null
   }
-  const e = memById.get(id)
-  if (!e) return null
-  if (now() - e.createdAt > e.ttlMs) {
-    memByHost.delete(e.host); memById.delete(id); return null
-  }
-  return e
+
+  return cached
 }
 
-export async function rateLimit(ip: string, limit = 20, windowMs = 10 * 60 * 1000) {
-  const k = await getKV()
-  const key = `rate:${ip}:${Math.floor(now() / windowMs)}`
-  if (k) {
-    try {
-      const current = (await k.get<number>(key)) || 0
-      if (current >= limit) return { allowed: false, remaining: 0, retryAfterMs: windowMs - (now() % windowMs) }
-      await k.set(key, current + 1, { ex: Math.ceil(windowMs / 1000) })
-      return { allowed: true, remaining: Math.max(0, limit - current - 1) }
-    } catch {
-      // fall through to memory
-    }
+export async function saveResult(host: string, result: ScanResult): Promise<CachedScan> {
+  const cached: CachedScan = {
+    id: `scan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    host,
+    result,
+    timestamp: Date.now(),
   }
-  const bucket = RATE.get(key)
-  if (!bucket) {
-    RATE.set(key, { tokens: limit - 1, resetAt: now() + windowMs })
-    return { allowed: true, remaining: limit - 1 }
+
+  scanCache.set(host, cached)
+  scanById.set(cached.id, cached)
+  return cached
+}
+
+export async function rateLimit(ip: string): Promise<{ allowed: boolean; retryAfterMs?: number }> {
+  const now = Date.now()
+  const key = ip
+  const limit = rateLimitCache.get(key)
+
+  if (!limit || now > limit.resetTime) {
+    // Reset or create new limit (10 requests per hour)
+    rateLimitCache.set(key, { count: 1, resetTime: now + 3600000 })
+    return { allowed: true }
   }
-  if (bucket.tokens <= 0) return { allowed: false, remaining: 0, retryAfterMs: bucket.resetAt - now() }
-  bucket.tokens -= 1
-  return { allowed: true, remaining: bucket.tokens }
+
+  if (limit.count >= 10) {
+    return { allowed: false, retryAfterMs: limit.resetTime - now }
+  }
+
+  limit.count++
+  return { allowed: true }
 }

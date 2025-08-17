@@ -1,66 +1,58 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { generateText } from "ai"
 import { xai } from "@ai-sdk/xai"
 
-/**
- * Keep the summary short, neutral, and actionable.
- * If the AI key is missing or the request fails, we return a safe fallback.
- * Uses the AI SDK with xAI's Grok 3 model [^3].
- */
-const FALLBACK_SAFE = {
-  ok: "From what we can see publicly, your setup looks solid. We didn’t spot obvious red flags. Keep HTTPS and security headers in place, and review DNS periodically.",
-  risky:
-    "We noticed a couple of items that may increase exposure (for example, a visible origin IP or server version details). Consider placing a protective edge in front of your origin and tightening HTTP security headers. These are straightforward changes and don’t require app code changes.",
-}
-
-function sanitizeSummary(text: string) {
-  let out = text || ""
-  // Remove emojis
-  out = out.replace(/[\u{1F300}-\u{1FAFF}\u{1F600}-\u{1F64F}]/gu, "")
-  // Tone down exclamations
-  out = out.replace(/!+/g, ".")
-  // Normalize whitespace
-  out = out.replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n").trim()
-  // Cap length
-  const maxLen = 700
-  if (out.length > maxLen) out = out.slice(0, maxLen).trimEnd() + "..."
-  return out
-}
-
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { vulnerabilities } = (await req.json()) as { vulnerabilities: string[] }
-    const fallback = (vulnerabilities?.length ?? 0) === 0 ? FALLBACK_SAFE.ok : FALLBACK_SAFE.risky
+    const { scanResult, host } = await request.json()
 
-    // If there is no key, return fallback safely
-    if (!process.env.XAI_API_KEY) {
-      return NextResponse.json({ text: fallback })
+    if (!scanResult || !host) {
+      return NextResponse.json({ error: "Missing scan result or host" }, { status: 400 })
     }
 
-    // Use xAI (Grok 3) via the AI SDK [^3]
+    const vulnerabilities = []
+    if (scanResult.waf?.vulnerable) vulnerabilities.push("WAF bypass possible")
+    if (scanResult.ip_exposed?.vulnerable) vulnerabilities.push("Origin IP exposed")
+    if (scanResult.server_header?.vulnerable) vulnerabilities.push("Server information leaked")
+
+    const protections = []
+    if (scanResult.meta?.edgeProviders?.length > 0) {
+      protections.push(`Protected by ${scanResult.meta.edgeProviders.join(", ")}`)
+    }
+    if (scanResult.meta?.httpsRedirect) protections.push("HTTPS redirect enabled")
+    if (scanResult.meta?.hsts) protections.push("HSTS security headers present")
+
+    const prompt = `Analyze this DDoS protection scan for ${host}:
+
+Vulnerabilities found: ${vulnerabilities.length > 0 ? vulnerabilities.join(", ") : "None detected"}
+Protections in place: ${protections.length > 0 ? protections.join(", ") : "Basic protection only"}
+
+Provide a brief, friendly analysis (2-3 sentences) focusing on:
+1. Overall DDoS protection level
+2. Key recommendations for improvement
+3. Mention that CallitDNS provides DNS services (not DDoS protection)
+
+Keep it simple and actionable for website owners.`
+
     const { text } = await generateText({
       model: xai("grok-3"),
-      maxTokens: 220,
-      temperature: 0.3,
-      system: [
-        "You are a neutral, concise security summarizer.",
-        "Constraints:",
-        "- 3–4 sentences max, then a short 'Next steps:' with 2–3 bullets.",
-        "- Avoid hype, emojis, vendor pitches, pricing, and timelines.",
-        "- Use calm, non‑alarmist language (e.g., 'may', 'could', 'consider').",
-        "- Speak to a general audience; avoid jargon.",
-      ].join("\n"),
-      prompt: [
-        "Summarize website scan findings for a non‑expert.",
-        `Vulnerabilities: ${vulnerabilities?.join(", ") || "None"}.`,
-        "Be specific but neutral. Focus on what’s observable from public signals only.",
-        "Vendor‑neutral remediation. No brand names in the summary.",
-      ].join("\n"),
+      prompt,
+      maxTokens: 200,
     })
 
-    const safe = sanitizeSummary(text?.trim() || fallback)
-    return NextResponse.json({ text: safe })
-  } catch {
-    return NextResponse.json({ text: FALLBACK_SAFE.risky })
+    return NextResponse.json({
+      analysis: text,
+      success: true,
+    })
+  } catch (error) {
+    console.error("Error generating AI summary:", error)
+    return NextResponse.json(
+      {
+        analysis:
+          "Unable to generate AI analysis at this time. Your scan results show the current protection status above.",
+        success: false,
+      },
+      { status: 500 },
+    )
   }
 }

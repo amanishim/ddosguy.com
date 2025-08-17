@@ -1,77 +1,123 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
+import { Kalam } from "next/font/google"
 import "./globals.css"
 
+const kalam = Kalam({
+  subsets: ["latin"],
+  weight: ["300", "400", "700"],
+  variable: "--font-kalam",
+})
+
 export const metadata: Metadata = {
-  title: {
-    default: "DDoS Guy · Keep Your Site Online",
-    template: "%s · DDoS Guy",
-  },
+  title: "What is DDoS? DDoS Guy - Free DDoS Protection Scanner & Meaning Explained",
   description:
-    "Free DDoS protection scanner and honest security advice. Check your website for vulnerabilities and get clear, vendor-neutral recommendations to stay online.",
-  keywords: ["DDoS protection", "website security", "DDoS scanner", "WAF", "CDN", "cybersecurity"],
-  authors: [{ name: "DDoS Guy" }],
-  creator: "DDoS Guy",
-  publisher: "DDoS Guy",
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
+    "Learn what is DDoS, DDoS meaning, and get free DDoS protection scanning. DDoS Guy explains DDoS attacks, provides DDoS protection tools, and helps secure your website from DDoS threats.",
+  keywords:
+    "what is ddos, ddos meaning, ddos protection, ddos attack, ddos scanner, ddos definition, dos attack, ddos mitigation, website security, cyber security",
+  authors: [{ name: "DDoS Guy", url: "https://ddosguy.com" }],
+  creator: "CallitDNS",
+  publisher: "CallitDNS",
+  robots: "index, follow",
   openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: process.env.NEXT_PUBLIC_SITE_URL || "https://ddosguy.com",
-    siteName: "DDoS Guy",
-    title: "DDoS Guy · Keep Your Site Online",
+    title: "What is DDoS? DDoS Guy - Free DDoS Protection Scanner",
     description:
-      "Free DDoS protection scanner and honest security advice. Check your website for vulnerabilities and get clear recommendations.",
+      "Learn what is DDoS, DDoS meaning, and get free DDoS protection scanning. Expert DDoS analysis and protection tools.",
+    url: "https://ddosguy.com",
+    siteName: "DDoS Guy",
     images: [
       {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "DDoS Guy - Keep Your Site Online",
+        alt: "DDoS Guy - What is DDoS Protection Scanner",
       },
     ],
+    locale: "en_US",
+    type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "DDoS Guy · Keep Your Site Online",
-    description: "Free DDoS protection scanner and honest security advice.",
+    title: "What is DDoS? DDoS Guy - Free DDoS Protection Scanner",
+    description: "Learn what is DDoS, DDoS meaning, and get free DDoS protection scanning.",
     images: ["/og.png"],
   },
   alternates: {
-    canonical: process.env.NEXT_PUBLIC_SITE_URL || "https://ddosguy.com",
+    canonical: "https://ddosguy.com",
+  },
+  verification: {
+    google: "your-google-verification-code",
   },
     generator: 'v0.app'
 }
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
-    <html lang="en">
+    <html lang="en" className={kalam.variable}>
       <head>
-        <style>{`
-html {
-  font-family: ${GeistSans.style.fontFamily};
-  --font-sans: ${GeistSans.variable};
-  --font-mono: ${GeistMono.variable};
-}
-        `}</style>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "DDoS Guy",
+              description: "Learn what is DDoS, DDoS meaning, and get free DDoS protection scanning",
+              url: "https://ddosguy.com",
+              publisher: {
+                "@type": "Organization",
+                name: "CallitDNS",
+                url: "https://callitdns.com",
+              },
+              potentialAction: {
+                "@type": "SearchAction",
+                target: "https://ddosguy.com/scanner?q={search_term_string}",
+                "query-input": "required name=search_term_string",
+              },
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: [
+                {
+                  "@type": "Question",
+                  name: "What is DDoS?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "DDoS (Distributed Denial of Service) is a cyber attack where multiple compromised systems flood a target server with traffic, making it unavailable to legitimate users.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "What does DDoS mean?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "DDoS means Distributed Denial of Service - a type of cyber attack that uses multiple systems to overwhelm a target with traffic.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "How does DDoS protection work?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "DDoS protection works by filtering malicious traffic, rate limiting requests, and distributing load across multiple servers to maintain service availability.",
+                  },
+                },
+              ],
+            }),
+          }}
+        />
       </head>
-      <body>{children}</body>
+      <body className="font-kalam bg-[#fef7ed] text-gray-800 min-h-screen">{children}</body>
     </html>
   )
 }

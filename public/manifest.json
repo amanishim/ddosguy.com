@@ -1,0 +1,16 @@
+{
+  "name": "DDoS Guy - Security Scanner",
+  "short_name": "DDoS Guy",
+  "description": "Free security scanner for websites and game servers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FEFCF3",
+  "theme_color": "#2d3748",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}

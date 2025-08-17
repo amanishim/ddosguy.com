@@ -1,102 +1,98 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
 
-type Props = {
-  open?: boolean
-  onClose?: () => void
+import { useState } from "react"
+import { X, Mail, Bell } from "lucide-react"
+
+interface ComingSoonModalProps {
+  open: boolean
+  onClose: () => void
   defaultDomain?: string
 }
 
-export default function ComingSoonModal({ open = false, onClose = () => {}, defaultDomain = "" }: Props) {
+export default function ComingSoonModal({ open, onClose, defaultDomain = "" }: ComingSoonModalProps) {
   const [email, setEmail] = useState("")
   const [domain, setDomain] = useState(defaultDomain)
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [submitted, setSubmitted] = useState(false)
 
-  const submit = async () => {
-    setError(null); setMessage(null)
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Please enter a valid email.")
-      return
-    }
-    if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(domain)) {
-      setError("Please enter a valid domain like example.com.")
-      return
-    }
-    setLoading(true)
-    try {
-      const res = await fetch("/api/notify", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, domain }),
-      })
-      const j = await res.json()
-      if (!res.ok) throw new Error(j.error || "Something went wrong")
-      setMessage("Got it! We’ll email you when Secure DNS is live.")
-      setEmail("")
-    } catch (e: any) {
-      setError(e?.message || "Something went wrong")
-    } finally {
-      setLoading(false)
-    }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    // Simulate submission
+    setSubmitted(true)
+    setTimeout(() => {
+      setSubmitted(false)
+      onClose()
+    }, 2000)
   }
 
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="doodle-border bg-[color:var(--paper)] max-w-lg w-full p-6">
-        <div className="flex items-start justify-between gap-4">
-          <h3 className="font-heading text-3xl">{"Secure DNS — Coming Soon"}</h3>
-          <button className="doodle-btn bg-white px-3 py-1 text-sm" onClick={onClose}>{"Close"}</button>
-        </div>
-        <p className="mt-2 opacity-80">
-          {"We’re partnering with "}
-          <a
-            href="https://callitdns.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline font-semibold"
-          >
-            {"callitdns.com"}
-          </a>
-          {" to make hiding your origin IP simple. Leave your email to get notified at launch."}
-        </p>
-        <div className="mt-4 grid gap-3">
-          <div className="grid gap-1 text-left">
-            <label htmlFor="cs-email" className="text-sm font-semibold">{"Email"}</label>
-            <input
-              id="cs-email"
-              className="doodle-input p-3 bg-white"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg border-3 border-[color:var(--ink)] max-w-md w-full p-6 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+          <X className="h-6 w-6" />
+        </button>
+
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-[color:var(--accent)] rounded-full flex items-center justify-center mx-auto mb-4">
+            <Bell className="h-8 w-8 text-[color:var(--ink)]" />
           </div>
-          <div className="grid gap-1 text-left">
-            <label htmlFor="cs-domain" className="text-sm font-semibold">{"Your domain"}</label>
-            <input
-              id="cs-domain"
-              className="doodle-input p-3 bg-white"
-              placeholder="example.com"
-              value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-2">
-            <button className="doodle-btn doodle-btn--accent px-4 py-2" onClick={submit} disabled={loading}>
-              {loading ? "Sending..." : "Notify me"}
-            </button>
-            <button className="doodle-btn bg-white px-4 py-2" onClick={onClose}>{"Maybe later"}</button>
-          </div>
-          {error && <p className="text-red-600">{error}</p>}
-          {message && <p className="text-green-700">{message}</p>}
-          <p className="text-xs opacity-70 mt-2">
-            {"We only use your email to let you know when this feature is ready. No spam."}
+          <h2 className="font-heading text-2xl font-bold text-[color:var(--ink)] mb-2">Coming Soon!</h2>
+          <p className="text-[color:var(--ink)]/70 font-heading">
+            Get notified when detailed security reports are available
           </p>
         </div>
+
+        {submitted ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Mail className="h-8 w-8 text-green-600" />
+            </div>
+            <h3 className="font-heading text-xl font-bold text-green-600 mb-2">Thanks for signing up!</h3>
+            <p className="text-gray-600 font-heading">We'll notify you when this feature is ready.</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label
+                htmlFor="notify-email"
+                className="block text-sm font-medium mb-2 text-[color:var(--ink)] font-heading"
+              >
+                Email address
+              </label>
+              <input
+                id="notify-email"
+                type="email"
+                required
+                className="doodle-input w-full"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="notify-domain"
+                className="block text-sm font-medium mb-2 text-[color:var(--ink)] font-heading"
+              >
+                Domain (optional)
+              </label>
+              <input
+                id="notify-domain"
+                type="text"
+                className="doodle-input w-full"
+                placeholder="example.com"
+                value={domain}
+                onChange={(e) => setDomain(e.target.value)}
+              />
+            </div>
+            <button type="submit" className="doodle-btn doodle-btn--accent w-full font-bold">
+              Notify Me
+            </button>
+          </form>
+        )}
       </div>
     </div>
   )

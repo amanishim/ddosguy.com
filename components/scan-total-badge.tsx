@@ -2,39 +2,39 @@
 
 import { useEffect, useState } from "react"
 
-type Props = {
-  className?: string
-  size?: "sm" | "md"
-}
-
-export default function ScanTotalBadge({ className = "", size = "md" }: Props) {
-  const [total, setTotal] = useState<number | null>(null)
+export function ScanTotalBadge() {
+  const [totalScans, setTotalScans] = useState<number>(0)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let active = true
-    async function load() {
+    async function fetchTotal() {
       try {
-        const r = await fetch("/api/scan-total", { cache: "no-store" })
-        const j = await r.json()
-        if (active) setTotal(typeof j.total === "number" ? j.total : 0)
-      } catch {
-        if (active) setTotal(0)
+        const response = await fetch("/api/scan-total")
+        if (response.ok) {
+          const data = await response.json()
+          setTotalScans(data.total)
+        }
+      } catch (error) {
+        console.error("Failed to fetch scan total:", error)
+      } finally {
+        setLoading(false)
       }
     }
-    load()
-    const id = setInterval(load, 20000) // refresh every 20s
-    return () => { active = false; clearInterval(id) }
+
+    fetchTotal()
   }, [])
 
-  const pad = size === "sm" ? "px-2 py-1 text-xs" : "px-3 py-1.5 text-sm"
+  if (loading) {
+    return (
+      <div className="bg-green-200 border-2 border-black px-3 py-1 transform rotate-2 shadow-[2px_2px_0px_0px_#000]">
+        <span className="text-sm font-bold text-black">Loading...</span>
+      </div>
+    )
+  }
+
   return (
-    <div
-      className={`doodle-border bg-white inline-flex items-center ${pad} font-semibold ${className}`}
-      title="Total scans run"
-      aria-label={`Total scans run: ${total ?? "loading"}`}
-    >
-      <span className="opacity-70 mr-2">Scans</span>
-      <span className="font-heading text-lg leading-none">{total ?? "—"}</span>
+    <div className="bg-green-200 border-2 border-black px-3 py-1 transform rotate-2 shadow-[2px_2px_0px_0px_#000]">
+      <span className="text-sm font-bold text-black">{totalScans.toLocaleString()} scans completed! 🎉</span>
     </div>
   )
 }
